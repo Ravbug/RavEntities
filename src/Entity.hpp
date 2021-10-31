@@ -1,6 +1,5 @@
 #pragma once
 #include "EntityRecordManager.hpp"
-#include <functional>
 
 template<typename ... A>
 struct Entity{

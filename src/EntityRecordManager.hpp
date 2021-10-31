@@ -6,6 +6,7 @@
 #include "World.hpp"
 #include "Types.hpp"
 #include "Component.hpp"
+#include <variant>
 
 // a variadic contains helper
 template<typename T, typename... Ts>
@@ -13,14 +14,17 @@ static constexpr bool contains(){
     return std::disjunction_v<std::is_same<T, Ts>...>;
 }
 
-template<typename Target, typename ListHead, typename... ListTails>
-static constexpr size_t getTypeIndexInTemplateList()
-{
-    if constexpr (std::is_same<Target, ListHead>::value)
-        return 0;
-    else
-        return 1 + getTypeIndexInTemplateList<Target, ListTails...>();
-}
+template <typename T, typename... Ts>
+struct Index;
+
+template <typename T, typename... Ts>
+struct Index<T, T, Ts...> : std::integral_constant<std::size_t, 0> {};
+
+template <typename T, typename U, typename... Ts>
+struct Index<T, U, Ts...> : std::integral_constant<std::size_t, 1 + Index<T, Ts...>::value> {};
+
+template <typename T, typename... Ts>
+constexpr std::size_t Index_v = Index<T, Ts...>::value;
 
 struct EntityRecordManager{
     EntityRecordManager() = delete;
@@ -53,14 +57,11 @@ struct EntityRecordManager{
         }
         
         template<typename Comp_T>
-        inline pos_t& GetLocation(){
+        constexpr inline pos_t& GetLocation(){
             static_assert(contains<Comp_T, A...>(), "Passed type is not valid for this entity!");
             
             // calculate the position index for this type
-            auto type_idx = getTypeIndexInTemplateList<Comp_T, std::tuple_element_t<0, std::tuple<A...>>, A...>();
-            if (type_idx > 0){
-                type_idx--;     //TODO: fix the return of the index list to not go 0,2,3,...
-            }
+            auto type_idx = Index_v<Comp_T, A...>;
             
             //returns a reference so it can be modified
             return routingTable[type_idx];
@@ -108,17 +109,17 @@ struct EntityRecordManager{
         vendList<A...>.push(id);
     }
     
-    template<typename Entity_T, typename Comp_T, typename ... A, typename ... Ctor_Args>
+    template<typename Entity_t, typename Comp_T, typename ... A, typename ... Ctor_Args>
     static inline ComponentHandle<Comp_T> EmplaceComponent(entity_id_t id,Ctor_Args ... args){
         // create the component in the World, then return the ref handle to it
         auto& record = recordData<A...>[id];
-        auto ref = record.world.get().template EmplaceComponent<Entity_T,Comp_T>(id, args...);
+        auto ref = record.world.get().template EmplaceComponent<Comp_T>(id, args...);
         // we know where it was created based on the return value, so we now update the record's appropriate slot
         auto& idx = record.template GetLocation<Comp_T>();
         idx = ref.sparseindex;
     }
     
-    template<typename Entity_T, typename Comp_T,  typename ... A>
+    template<typename Entity_t, typename Comp_T,  typename ... A>
     static inline void DestroyComponent(entity_id_t id){
         // create the component reference
         auto& record = recordData<A...>[id];
@@ -126,7 +127,7 @@ struct EntityRecordManager{
         
         ComponentHandle<Comp_T> ref(record.world,idx);
         
-        record.world.get().template DestroyComponent<Entity_T>(ref);
+        record.world.get().template DestroyComponent(ref);
         
         idx = INVALID_INDEX;
     }
