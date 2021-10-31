@@ -16,6 +16,7 @@ class SparseComponentStore{
         TypeErasureEntity owner;
         pos_t posInSparse;
         aux_data(const decltype(owner)& o, const decltype(posInSparse) p) : owner(o), posInSparse(p){}
+        aux_data(const aux_data& other) : owner(other.owner),posInSparse(other.posInSparse){}
     };
     
     unordered_vector<T,vec> dense_set;
@@ -23,7 +24,7 @@ class SparseComponentStore{
     std::vector<pos_t> sparse_set;
     std::queue<pos_t> vendlist;
     
-    World* world = nullptr;
+    std::reference_wrapper<World> world;
 public:
     /**
      Must tell the sparse map what the owning world is
@@ -59,14 +60,14 @@ public:
         // add the component bookkeeping data
         aux_set.emplace(entity,idx);
         
-        return ComponentHandle<T>(*world,idx);
+        return ComponentHandle<T>(world,idx);
     }
     
     /**
      Remove a component on an entity
      */
     inline void DestroyComponent(const ComponentHandle<T>& handle){
-        assert(&handle.world.get() == world);   // this handle is not valid for this world!
+        assert(&handle.world.get() == &world.get());   // this handle is not valid for this world!
         assert(handle.sparseindex < sparse_set.size());
         
         // At this point, the EntityRecordManager has already been taken care of
@@ -90,6 +91,13 @@ public:
     inline T& GetComponent(pos_t sparseidx){
         return dense_set[sparse_set[sparseidx]];
     }
+    
+    template<typename Entity_t>
+    inline Entity_t GetComponentOwner(pos_t sparseidx) const{
+        auto& aux_data = aux_set[sparse_set[sparseidx]];
+        auto eptr = aux_data.owner.template As<Entity_t>();
+        return eptr;
+    }
 };
 
 struct World{
@@ -101,7 +109,7 @@ struct World{
         constexpr auto id = RavEngine::CTTI<T>();
         auto it = component_map.find(id);
         if (it == component_map.end()){
-            component_map.insert(std::make_pair(id,SparseComponentStore<T>(this)));
+            component_map.insert(std::make_pair(id,SparseComponentStore<T>(*this)));
         }
     }
     
@@ -122,5 +130,11 @@ struct World{
     inline T& GetComponent(pos_t sparseidx){
         auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
         return row->GetComponent(sparseidx);
+    }
+    
+    template<typename Entity_t, typename T>
+    inline Entity_t GetComponentOwner(pos_t sparseidx){
+        auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
+        return row->template GetComponentOwner<Entity_t>(sparseidx);
     }
 };

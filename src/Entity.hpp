@@ -13,14 +13,13 @@ struct Entity{
     }
     
     template<typename Comp_T, typename ... Args>
-    inline void EmplaceComponent(Args ... ctor_args){
-        // pass the current class Type
+    inline ComponentHandle<Comp_T> EmplaceComponent(Args ... ctor_args) const{
         auto myself = *this;
-        EntityRecordManager::EmplaceComponent<decltype(myself), Comp_T, A...>(myself, ctor_args...);
+        return EntityRecordManager::EmplaceComponent<decltype(myself), Comp_T, A...>(myself, ctor_args...);
     }
     
     template<typename Comp_T>
-    inline void DestroyComponent(){
+    inline void DestroyComponent() const{
         auto myself = *this;
         EntityRecordManager::DestroyComponent<decltype(myself),Comp_T,A...>(myself);
     }

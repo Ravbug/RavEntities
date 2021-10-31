@@ -18,7 +18,8 @@ struct FloatComponent : public RavEngine::AutoCTTI{
 
 struct TestEntity : public Entity<IntComponent,FloatComponent>{
     TestEntity(){
-        EmplaceComponent<IntComponent>(5);
+        auto comp = EmplaceComponent<IntComponent>(5);
+        comp.GetOwner<Entity<IntComponent,FloatComponent>>();
         EmplaceComponent<FloatComponent>(7.4f);
     }
 };
@@ -34,18 +35,23 @@ struct test2{
 
 int main(){
     std::array<TestEntity, 10> entities;
-    for(auto& e : entities){
-        e = TestEntity();
-    }
-    
-    for (auto& e : entities){
-        e.DestroyComponent<IntComponent>();
-    }
     
     auto comp = entities[0].GetComponent<FloatComponent>();
     (*comp).value = 10;
     
     auto comp2 = entities[0].GetComponent<FloatComponent>();
     cout << (*comp).value << endl;
+    
+    TypeErasureEntity te(entities[0]);
+    auto e = te.As<TestEntity>();
+    
+    auto owner = comp.GetOwner<TestEntity>();
+    
+    cout << owner.id;
+    
+    for (auto& e : entities){
+        e.DestroyComponent<IntComponent>();
+    }
+    
     //comp->value = 5;
 }

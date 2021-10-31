@@ -61,8 +61,9 @@ public:
      @note references may become invalid if an item is erased from the container
      */
     template<typename ... A>
-    inline void emplace(A ... args){
+    inline T& emplace(A ... args){
         underlying.emplace_back(args...);
+        return underlying.back();
     }
     
     inline T& operator[](index_type idx){

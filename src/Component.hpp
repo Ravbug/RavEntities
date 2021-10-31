@@ -2,10 +2,6 @@
 #include "TypeErasureEntity.hpp"
 #include "Types.hpp"
 
-struct Component{
-    
-};
-
 struct World;
 
 template<typename T>
@@ -19,5 +15,11 @@ struct ComponentHandle{
     T& operator*() const{
         return world.get().template GetComponent<T>(sparseindex);
     }
+    
+    template<typename Entity_t>
+    inline Entity_t GetOwner() const{
+        return world.get().template GetComponentOwner<Entity_t,T>(sparseindex);
+    }
+    
 };
 
