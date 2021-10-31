@@ -17,7 +17,10 @@ struct FloatComponent : public RavEngine::AutoCTTI{
 };
 
 struct TestEntity : public Entity<IntComponent,FloatComponent>{
-    
+    TestEntity(){
+        EmplaceComponent<IntComponent>(5);
+        EmplaceComponent<FloatComponent>(7.4f);
+    }
 };
 
 struct test{
@@ -30,12 +33,12 @@ struct test2{
 };
 
 int main(){
-    TestEntity t;
+    std::array<TestEntity, 10> entities;
+    for(auto& e : entities){
+        e = TestEntity();
+    }
     
-    t.EmplaceComponent<IntComponent>(5);
-    t.EmplaceComponent<FloatComponent>(7.4f);
-
-    t.DestroyComponent<IntComponent>();
-    
-    cout << type_index(typeid(t)).name() << endl;
+    for (auto& e : entities){
+        e.DestroyComponent<IntComponent>();
+    }
 }

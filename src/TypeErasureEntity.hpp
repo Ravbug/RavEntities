@@ -1,11 +1,13 @@
 #pragma once
+#include <any>
 
 struct TypeErasureEntity{
+    std::any owner;
     
     template<typename T>
     TypeErasureEntity(const T& entity){
         // create the erasure wrappers here
-        //TODO: implement
+        owner = entity;
     }
     
     template<typename T>

@@ -37,8 +37,8 @@ public:
     /**
      Create a component on an entity
      */
-    template<typename ... Args>
-    inline ComponentHandle<T> EmplaceComponent(entity_id_t entity, Args ... arguments){
+    template<typename Entity_t, typename ... Args>
+    inline ComponentHandle<T> EmplaceComponent(Entity_t entity, Args ... arguments){
         // add the component to the dense set
         dense_set.emplace(arguments...);
         
@@ -67,7 +67,7 @@ public:
      */
     inline void DestroyComponent(const ComponentHandle<T>& handle){
         assert(&handle.world.get() == world);   // this handle is not valid for this world!
-        assert(handle.sparseindex < dense_set.size());
+        assert(handle.sparseindex < sparse_set.size());
         
         // At this point, the EntityRecordManager has already been taken care of
         
@@ -77,6 +77,7 @@ public:
         
         // this sparse index is now reusable
         vendlist.push(handle.sparseindex);
+        sparse_set[handle.sparseindex] = INVALID_INDEX;
         
         // since this call could have moved memory, we need to update that
         if (!dense_set.empty()){
@@ -101,8 +102,8 @@ struct World{
         }
     }
     
-    template<typename T, typename ... Args>
-    inline ComponentHandle<T> EmplaceComponent(entity_id_t entity, Args ... arguments){
+    template<typename Entity_t, typename T, typename ... Args>
+    inline ComponentHandle<T> EmplaceComponent(Entity_t entity, Args ... arguments){
         MakeIfNotExists<T>();
         auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
         return row->template EmplaceComponent(entity,arguments...);

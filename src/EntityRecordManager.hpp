@@ -110,19 +110,19 @@ struct EntityRecordManager{
     }
     
     template<typename Entity_t, typename Comp_T, typename ... A, typename ... Ctor_Args>
-    static inline ComponentHandle<Comp_T> EmplaceComponent(entity_id_t id,Ctor_Args ... args){
+    static inline ComponentHandle<Comp_T> EmplaceComponent(Entity_t id,Ctor_Args ... args){
         // create the component in the World, then return the ref handle to it
-        auto& record = recordData<A...>[id];
-        auto ref = record.world.get().template EmplaceComponent<Comp_T>(id, args...);
+        auto& record = recordData<A...>[id.id];
+        auto ref = record.world.get().template EmplaceComponent<Entity_t,Comp_T>(id, args...);
         // we know where it was created based on the return value, so we now update the record's appropriate slot
         auto& idx = record.template GetLocation<Comp_T>();
         idx = ref.sparseindex;
     }
     
     template<typename Entity_t, typename Comp_T,  typename ... A>
-    static inline void DestroyComponent(entity_id_t id){
+    static inline void DestroyComponent(Entity_t id){
         // create the component reference
-        auto& record = recordData<A...>[id];
+        auto& record = recordData<A...>[id.id];
         auto& idx = record.template GetLocation<Comp_T>();
         
         ComponentHandle<Comp_T> ref(record.world,idx);
