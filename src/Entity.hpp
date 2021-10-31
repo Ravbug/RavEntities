@@ -15,12 +15,12 @@ struct Entity{
     template<typename Comp_T, typename ... Args>
     inline void EmplaceComponent(Args ... ctor_args){
         // pass the current class Type
-        EntityRecordManager::EmplaceComponent<decltype(std::remove_reference<decltype(*this)>()), Comp_T, A..., Args...>(id, ctor_args...);
+        EntityRecordManager::EmplaceComponent<decltype(std::remove_reference<decltype(*this)>()), Comp_T, A...>(id, ctor_args...);
     }
     
     template<typename Comp_T>
     inline void DestroyComponent(){
-        EntityRecordManager::DestroyComponent<decltype(std::remove_reference<decltype(*this)>()),A...,Comp_T>(id);
+        EntityRecordManager::DestroyComponent<decltype(std::remove_reference<decltype(*this)>()),Comp_T,A...>(id);
     }
 };
 

@@ -85,13 +85,16 @@ public:
 };
 
 struct World{
+    
+    std::unordered_map<RavEngine::ctti_t, int> component_map;
+    
     template<typename Entity_t, typename T, typename ... Args>
     inline ComponentHandle<T> EmplaceComponent(entity_id_t entity, Args ... arguments){
-        
+        auto& row = component_map[RavEngine::CTTI<T>()];
     }
     
     template<typename Entity_t, typename T>
     inline void DestroyComponent(const ComponentHandle<T>& handle){
-        
+        auto& row = component_map[RavEngine::CTTI<T>()];
     }
 };

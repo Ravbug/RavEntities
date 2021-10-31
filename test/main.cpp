@@ -1,16 +1,16 @@
 #include <EntityRecordManager.hpp>
 #include <Entity.hpp>
-
 #include <typeindex>
 #include <iostream>
+#include "CTTI.hpp"
 
 using namespace std;
 
-struct IntComponent{
+struct IntComponent : public RavEngine::AutoCTTI{
     int value;
 };
 
-struct FloatComponent{
+struct FloatComponent : public RavEngine::AutoCTTI{
     float value;
 };
 
