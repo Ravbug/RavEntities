@@ -87,6 +87,9 @@ public:
         }
     }
     
+    inline T& GetComponent(pos_t sparseidx){
+        return dense_set[sparse_set[sparseidx]];
+    }
 };
 
 struct World{
@@ -113,5 +116,11 @@ struct World{
     inline void DestroyComponent(const ComponentHandle<T>& handle){
         auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
         row->DestroyComponent(handle);
+    }
+    
+    template<typename T>
+    inline T& GetComponent(pos_t sparseidx){
+        auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
+        return row->GetComponent(sparseidx);
     }
 };

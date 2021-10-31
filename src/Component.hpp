@@ -16,8 +16,8 @@ struct ComponentHandle{
     ComponentHandle(const decltype(world)& w, decltype(sparseindex) idx) : world(w), sparseindex(idx){}
 
     // overload operator->
-    T& operator->() const{
-        // TODO: call world to get component given type and sparseindex
+    T& operator*() const{
+        return world.get().template GetComponent<T>(sparseindex);
     }
 };
 

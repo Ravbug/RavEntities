@@ -109,6 +109,13 @@ struct EntityRecordManager{
         vendList<A...>.push(id);
     }
     
+    template<typename Entity_t, typename Comp_T, typename ... A>
+    static inline ComponentHandle<Comp_T> GetComponent(Entity_t id){
+        auto& record = recordData<A...>[id.id];
+        auto& idx = record.template GetLocation<Comp_T>();
+        return ComponentHandle<Comp_T>(record.world,idx);
+    }
+    
     template<typename Entity_t, typename Comp_T, typename ... A, typename ... Ctor_Args>
     static inline ComponentHandle<Comp_T> EmplaceComponent(Entity_t id,Ctor_Args ... args){
         // create the component in the World, then return the ref handle to it

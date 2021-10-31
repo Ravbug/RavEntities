@@ -41,4 +41,11 @@ int main(){
     for (auto& e : entities){
         e.DestroyComponent<IntComponent>();
     }
+    
+    auto comp = entities[0].GetComponent<FloatComponent>();
+    (*comp).value = 10;
+    
+    auto comp2 = entities[0].GetComponent<FloatComponent>();
+    cout << (*comp).value << endl;
+    //comp->value = 5;
 }

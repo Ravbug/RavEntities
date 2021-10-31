@@ -1,5 +1,6 @@
 #pragma once
 #include "EntityRecordManager.hpp"
+#include "Component.hpp"
 
 template<typename ... A>
 struct Entity{
@@ -22,6 +23,12 @@ struct Entity{
     inline void DestroyComponent(){
         auto myself = *this;
         EntityRecordManager::DestroyComponent<decltype(myself),Comp_T,A...>(myself);
+    }
+    
+    template<typename Comp_T>
+    inline ComponentHandle<Comp_T> GetComponent() const{
+        auto myself = *this;
+        return EntityRecordManager::GetComponent<decltype(myself), Comp_T, A...>(myself);
     }
 };
 
