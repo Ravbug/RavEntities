@@ -32,9 +32,14 @@ struct Entity{
         return EntityRecordManager::GetComponent<decltype(myself), Comp_T, A...>(myself);
     }
     
-    inline std::optional<std::reference_wrapper<World>> GetWorld(){
+    inline std::optional<std::reference_wrapper<World>> GetWorld() const{
         auto myself = *this;
         return EntityRecordManager::GetEntityWorld<decltype(myself),A...>(myself);
+    }
+    
+    inline void MoveToWorld(World* newWorld) const{
+        auto myself = *this;
+        EntityRecordManager::MoveToWorld<decltype(myself),A...>(myself,newWorld);
     }
 };
 

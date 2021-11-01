@@ -81,7 +81,7 @@ public:
         sparse_set[handle.sparseindex] = INVALID_INDEX;
         
         // since this call could have moved memory, we need to update that
-        if (!dense_set.empty()){
+        if (destroyIdx < dense_set.size()){
             // what is there now?
             auto& currentAux = aux_set[destroyIdx];
             sparse_set[currentAux.posInSparse] = destroyIdx;    // point it at the location we just filled
@@ -89,6 +89,8 @@ public:
     }
     
     inline T& GetComponent(pos_t sparseidx){
+        assert(sparseidx < sparse_set.size());
+        assert(sparse_set[sparseidx] < dense_set.size());
         return dense_set[sparse_set[sparseidx]];
     }
     
@@ -140,6 +142,6 @@ struct World{
     
     template<typename Entity_t>
     inline void Spawn(Entity_t e){
-        
+        e.MoveToWorld(this);
     }
 };

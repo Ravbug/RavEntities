@@ -48,11 +48,19 @@ int main(){
     
     auto owner = comp.GetOwner<Entity<IntComponent,FloatComponent>>();
     
-    cout << owner.id;
     
     for (auto& e : entities){
         e.DestroyComponent<IntComponent>();
     }
     
+    World w;
+    TestEntity e11;
+    (*e11.GetComponent<FloatComponent>()).value = 46;
+    cout << (*e11.GetComponent<FloatComponent>()).value << endl;
+    w.Spawn(e11);
+    
+    
+    cout <<  (*e11.GetComponent<FloatComponent>()).value << endl;
+
     //comp->value = 5;
 }

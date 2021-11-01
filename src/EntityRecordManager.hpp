@@ -61,10 +61,15 @@ struct EntityRecordManager{
             static_assert(contains<Comp_T, A...>(), "Passed type is not valid for this entity!");
             
             // calculate the position index for this type
-            auto type_idx = Index_v<Comp_T, A...>;
+            constexpr auto type_idx = Index_v<Comp_T, A...>;
             
             //returns a reference so it can be modified
             return routingTable[type_idx];
+        }
+        
+        template<typename Comp_T>
+        constexpr inline pos_t GetSlot(){
+            return Index_v<Comp_T, A...>;;
         }
     };
     
@@ -148,6 +153,32 @@ struct EntityRecordManager{
             world.emplace(record.world);
         }
         return world;
+    }
+    
+    template<typename Entity_t, typename T, typename ... A>
+    inline static void MoveToWorldHelper(Entity_t entity, World* newWorld){
+        auto& record = recordData<A...>[entity.id];
+        // if the component exists on the entity
+        auto routing_idx = record.template GetSlot<T>();
+        if (record.IsValid(routing_idx)){
+            // in the new world, copy-construct that component on the entity
+            auto idx = record.template GetLocation<T>();
+            auto& oldComp = record.world.get().template GetComponent<T>(idx);
+            auto ref = newWorld->EmplaceComponent<Entity_t,T>(entity,oldComp);
+            record.routingTable[routing_idx] = ref.sparseindex;
+            // destroy the one in the old world
+            record.world.get().template DestroyComponent<T>(ComponentHandle<T>(record.world.get(),idx));
+        }
+    }
+    
+    template<typename Entity_t, typename ... A>
+    inline static void MoveToWorld(Entity_t entity, World* world){
+        // iterate over A
+        (MoveToWorldHelper<Entity_t, A, A...>(entity, world), ...);
+        
+        // update the record pointer
+        auto& record = recordData<A...>[entity.id];
+        record.world = *world;
     }
 };
 
