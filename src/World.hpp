@@ -137,4 +137,9 @@ struct World{
         auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
         return row->template GetComponentOwner<Entity_t>(sparseidx);
     }
+    
+    template<typename Entity_t>
+    inline void Spawn(Entity_t e){
+        
+    }
 };

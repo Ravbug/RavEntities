@@ -44,8 +44,9 @@ int main(){
     
     TypeErasureEntity te(entities[0]);
     auto e = te.As<TestEntity>();
+    assert(!e.GetWorld());
     
-    auto owner = comp.GetOwner<TestEntity>();
+    auto owner = comp.GetOwner<Entity<IntComponent,FloatComponent>>();
     
     cout << owner.id;
     

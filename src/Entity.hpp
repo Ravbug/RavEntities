@@ -2,6 +2,8 @@
 #include "EntityRecordManager.hpp"
 #include "Component.hpp"
 
+struct World;
+
 template<typename ... A>
 struct Entity{
     entity_id_t id;
@@ -28,6 +30,11 @@ struct Entity{
     inline ComponentHandle<Comp_T> GetComponent() const{
         auto myself = *this;
         return EntityRecordManager::GetComponent<decltype(myself), Comp_T, A...>(myself);
+    }
+    
+    inline std::optional<std::reference_wrapper<World>> GetWorld(){
+        auto myself = *this;
+        return EntityRecordManager::GetEntityWorld<decltype(myself),A...>(myself);
     }
 };
 

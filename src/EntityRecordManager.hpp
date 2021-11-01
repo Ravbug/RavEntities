@@ -139,6 +139,16 @@ struct EntityRecordManager{
         
         idx = INVALID_INDEX;
     }
+    
+    template<typename Entity_t, typename ... A>
+    inline static std::optional<std::reference_wrapper<World>> GetEntityWorld(Entity_t id){
+        auto& record = recordData<A...>[id.id];
+        std::optional<std::reference_wrapper<World>> world;
+        if (&record.world.get() != &dummyWorld){
+            world.emplace(record.world);
+        }
+        return world;
+    }
 };
 
 // static member definitions
