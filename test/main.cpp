@@ -47,11 +47,17 @@ static inline decltype(timer)::duration time(const T& func){
 
 int main(){
     constexpr auto n_entities = 3'000'000;
+    std::unique_ptr<std::array<TestEntity,n_entities>> entities;
     World w;
+    
     auto dur = time([&]{
-        for(int i = 0; i < n_entities; i++){
-            TestEntity t;
-            w.Spawn(t);
+        entities = std::make_unique<std::array<TestEntity,n_entities>>();
+    });
+    cout << "Creating " << n_entities << " entities took " << dur.count() << "µs\n";
+
+    dur = time([&]{
+        for(const auto& e : *entities){
+            w.Spawn(e);
         }
     });
     cout << "Spawning " << n_entities << " entities took " << dur.count() << "µs\n";
@@ -61,5 +67,33 @@ int main(){
             intcomp.value += 5;
         }
     });
+    
     cout << "Updating " << n_entities << " components took " << dur.count() << "µs\n";
+    
+    dur = time([&]{
+        for(const auto& e : *entities){
+            (*e.GetComponent<IntComponent>()).value += 6;
+        }
+    });
+    
+    cout << "GetComponent on " << n_entities << " entities took " << dur.count() << "µs\n";
+    
+    cout << "Before destroying, GetComponent returns " << ((*entities)[0].GetComponent<IntComponent>().IsValid() ? "valid" : "invalid") << "\n";
+    
+    dur = time([&]{
+        for(const auto& e : *entities){
+            e.DestroyComponent<IntComponent>();
+        }
+    });
+    
+    cout << "After destroying, GetComponent returns " << ((*entities)[0].GetComponent<IntComponent>().IsValid() ? "valid" : "invalid") << "\n";
+    
+    cout << "Destroy 1 component on " << n_entities << " entities took " << dur.count() << "µs\n";
+    
+    dur = time([&]{
+        for(const auto& e : *entities){
+            e.EmplaceComponent<IntComponent>(67);
+        }
+    });
+    cout << "Emplace 1 component pre-allocated on " << n_entities << " entities took " << dur.count() << "µs\n";
 }

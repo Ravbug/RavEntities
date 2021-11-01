@@ -21,6 +21,7 @@ struct ComponentHandle{
 
     // overload operator->
     T& operator*() const{
+        assert(IsValid());
         return world.get().template GetComponent<T>(sparseindex);
     }
     

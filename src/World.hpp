@@ -94,6 +94,10 @@ public:
         return dense_set[sparse_set[sparseidx]];
     }
     
+    inline bool IndexIsValid(pos_t sparseidx){
+        return sparseidx < sparse_set.size() && sparse_set[sparseidx] != INVALID_INDEX;
+    }
+    
     template<typename Entity_t>
     inline Entity_t GetComponentOwner(pos_t sparseidx) const{
         auto& aux_data = aux_set[sparse_set[sparseidx]];
@@ -169,7 +173,7 @@ private:
         if (component_map.find(RavEngine::CTTI<T>()) == component_map.end()){
             return false;
         }
-        return GetTypeRow<T>()->template IsValid(sparseidx);
+        return GetTypeRow<T>()->IndexIsValid(sparseidx);
     }
     
 public:
