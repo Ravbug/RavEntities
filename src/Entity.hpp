@@ -11,7 +11,11 @@ struct Entity{
     
     entity_id_t id = INVALID_INDEX;
     
-    Entity() : id(EntityRecordManager::CreateEntity<A...>()){}
+    Entity(){}
+    
+    inline void Create(){
+        id = EntityRecordManager::CreateEntity<A...>();
+    }
     
     inline void Destroy(){
         EntityRecordManager::DestroyEntity<A...>(id);
@@ -19,23 +23,27 @@ struct Entity{
     
     template<typename Comp_T, typename ... Args>
     inline ComponentHandle<Comp_T> EmplaceComponent(Args ... ctor_args) const{
+        assert(IsValid());
         auto& myself = *this;
         return EntityRecordManager::EmplaceComponent<decltype(myself), Comp_T, A...>(myself, ctor_args...);
     }
     
     template<typename Comp_T>
     inline void DestroyComponent() const{
+        assert(IsValid());
         auto& myself = *this;
         EntityRecordManager::DestroyComponent<decltype(myself),Comp_T,A...>(myself);
     }
     
     template<typename Comp_T>
     inline ComponentHandle<Comp_T> GetComponent() const{
+        assert(IsValid());
         auto& myself = *this;
         return EntityRecordManager::GetComponent<decltype(myself), Comp_T, A...>(myself);
     }
     
     inline std::optional<std::reference_wrapper<World>> GetWorld() const{
+        assert(IsValid());
         auto& myself = *this;
         return EntityRecordManager::GetEntityWorld<decltype(myself),A...>(myself);
     }
@@ -51,11 +59,13 @@ struct Entity{
     
 private:
     inline void MoveToWorld(World* newWorld) const{
+        assert(IsValid());
         auto& myself = *this;
         EntityRecordManager::MoveToWorld<decltype(myself),A...>(myself,newWorld);
     }
     
     inline void ReturnToStaging() const{
+        assert(IsValid());
         auto& myself = *this;
         EntityRecordManager::Despawn<decltype(myself), A...>(myself);
     }

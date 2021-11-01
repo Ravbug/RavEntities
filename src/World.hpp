@@ -88,10 +88,10 @@ public:
         }
     }
     
-    inline T& GetComponent(pos_t sparseidx){
+    inline T* GetComponent(pos_t sparseidx){
         assert(sparseidx < sparse_set.size());
         assert(sparse_set[sparseidx] < dense_set.size());
-        return dense_set[sparse_set[sparseidx]];
+        return &dense_set[sparse_set[sparseidx]];
     }
     
     inline bool IndexIsValid(pos_t sparseidx){
@@ -134,46 +134,71 @@ private:
     std::unordered_map<RavEngine::ctti_t, std::any> component_map;
     
     template<typename T>
-    inline void MakeIfNotExists(){
+    inline SparseComponentStore<T>* MakeIfNotExists(){
         constexpr auto id = RavEngine::CTTI<T>();
         auto it = component_map.find(id);
         if (it == component_map.end()){
-            component_map.insert(std::make_pair(id,SparseComponentStore<T>(*this)));
+            it = component_map.emplace(std::make_pair(id,SparseComponentStore<T>(*this))).first;
         }
+        auto ptr = std::any_cast<SparseComponentStore<T>>(&(*it).second);
+        assert(ptr != nullptr);
+        return ptr;
     }
     
     template<typename Entity_t, typename T, typename ... Args>
     inline ComponentHandle<T> EmplaceComponent(Entity_t entity, Args ... arguments){
-        MakeIfNotExists<T>();
-        return GetTypeRow<T>()->template EmplaceComponent(entity,arguments...);
+        return MakeIfNotExists<T>()->template EmplaceComponent(entity,arguments...);
     }
     
     template<typename T>
     inline void DestroyComponent(const ComponentHandle<T>& handle){
-        GetTypeRow<T>()->DestroyComponent(handle);
+        auto ptr = GetTypeRow<T>();
+        if (ptr){
+            ptr->DestroyComponent(handle);
+        }
+        else{
+            assert(false);  // cannot destroy an invalid handle!
+        }
     }
     
     template<typename T>
-    inline T& GetComponent(pos_t sparseidx){
-        return GetTypeRow<T>()->GetComponent(sparseidx);
+    inline T* GetComponent(pos_t sparseidx){
+        auto ptr = GetTypeRow<T>();
+        if (ptr){
+            return ptr->GetComponent(sparseidx);
+        }
+        return nullptr;
     }
     
     template<typename Entity_t, typename T>
     inline Entity_t GetComponentOwner(pos_t sparseidx){
-        return GetTypeRow<T>()->template GetComponentOwner<Entity_t>(sparseidx);
+        auto ptr = GetTypeRow<T>();
+        if (ptr){
+            return ptr->template GetComponentOwner<Entity_t>(sparseidx);
+        }
+        else{
+            return Entity_t();  // default to invalid handle
+        }
     }
     
     template<typename T>
     inline SparseComponentStore<T>* GetTypeRow(){
-        return std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
+        auto it = component_map.find(RavEngine::CTTI<T>());
+        if (it == component_map.end()){
+            return nullptr;
+        }
+        auto ptr = std::any_cast<SparseComponentStore<T>>(&(*it).second);
+        assert(ptr != nullptr);
+        return ptr;
     }
     
     template<typename T>
     inline bool ComponentIsValid(pos_t sparseidx){
-        if (component_map.find(RavEngine::CTTI<T>()) == component_map.end()){
+        auto ptr = GetTypeRow<T>();
+        if (ptr == nullptr){
             return false;
         }
-        return GetTypeRow<T>()->IndexIsValid(sparseidx);
+        return ptr->IndexIsValid(sparseidx);
     }
     
 public:

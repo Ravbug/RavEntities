@@ -164,8 +164,9 @@ class EntityRecordManager{
         if (record.IsValid(routing_idx)){
             // in the new world, move-construct that component on the entity
             auto idx = record.template GetLocation<T>();
-            auto& oldComp = record.world.get().template GetComponent<T>(idx);
-            auto ref = newWorld->EmplaceComponent<Entity_t,T>(entity,std::move(oldComp));
+            auto oldComp = record.world.get().template GetComponent<T>(idx);
+            assert(oldComp != nullptr);
+            auto ref = newWorld->EmplaceComponent<Entity_t,T>(entity,std::move(*oldComp));
             record.routingTable[routing_idx] = ref.sparseindex;
             // destroy the one in the old world
             record.world.get().template DestroyComponent<T>(ComponentHandle<T>(record.world.get(),idx));

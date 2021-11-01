@@ -19,8 +19,8 @@ struct FloatComponent : public RavEngine::AutoCTTI{
 
 struct TestEntity : public Entity<IntComponent,FloatComponent>{
     TestEntity(){
-        auto comp = EmplaceComponent<IntComponent>(5);
-        comp.GetOwner<Entity<IntComponent,FloatComponent>>();
+        Create();
+        EmplaceComponent<IntComponent>(5);
         EmplaceComponent<FloatComponent>(7.4f);
     }
 };
@@ -72,7 +72,7 @@ int main(){
     
     dur = time([&]{
         for(const auto& e : *entities){
-            (*e.GetComponent<IntComponent>()).value += 6;
+            (*e.GetComponent<IntComponent>())->value += 6;
         }
     });
     
