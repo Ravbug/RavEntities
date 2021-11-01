@@ -9,7 +9,7 @@ struct Entity{
     
     friend class World;
     
-    entity_id_t id;
+    entity_id_t id = INVALID_INDEX;
     
     Entity() : id(EntityRecordManager::CreateEntity<A...>()){}
     
@@ -39,6 +39,16 @@ struct Entity{
         auto myself = *this;
         return EntityRecordManager::GetEntityWorld<decltype(myself),A...>(myself);
     }
+    
+    inline bool IsValid() const{
+        return id != INVALID_INDEX;
+        //TODO: check with entity record manager to ensure this ID is actually in use
+    }
+    
+    inline operator bool() const{
+        return IsValid();
+    }
+    
 private:
     inline void MoveToWorld(World* newWorld) const{
         auto myself = *this;

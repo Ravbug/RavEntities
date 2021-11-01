@@ -12,7 +12,11 @@ struct ComponentHandle{
     ComponentHandle(const decltype(world)& w, decltype(sparseindex) idx) : world(w), sparseindex(idx){}
     
     inline operator bool() const{
-        
+        return IsValid();
+    }
+    
+    inline bool IsValid() const{
+        return world.get().template ComponentIsValid<T>(sparseindex);
     }
 
     // overload operator->

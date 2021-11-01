@@ -3,6 +3,7 @@
 #include <typeindex>
 #include <iostream>
 #include "CTTI.hpp"
+#include <chrono>
 
 using namespace std;
 
@@ -33,42 +34,32 @@ struct test2{
     std::string fatthing;
 };
 
-int main(){
-    std::array<TestEntity, 10> entities;
-    
-    auto comp = entities[0].GetComponent<FloatComponent>();
-    (*comp).value = 10;
-    
-    auto comp2 = entities[0].GetComponent<FloatComponent>();
-    cout << (*comp).value << endl;
-    
-    TypeErasureEntity te(entities[0]);
-    auto e = te.As<TestEntity>();
-    assert(!e.GetWorld());
-    
-    auto owner = comp.GetOwner<Entity<IntComponent,FloatComponent>>();
-    
-    
-    for (auto& e : entities){
-        e.DestroyComponent<IntComponent>();
-    }
-    
-    World w;
-    TestEntity e11;
-    (*e11.GetComponent<FloatComponent>()).value = 46;
-    cout << (*e11.GetComponent<FloatComponent>()).value << endl;
-    w.Spawn(e11);
-    
-    
-    cout <<  (*e11.GetComponent<FloatComponent>()).value << endl;
-    
-    for(auto& comp : w.GetAllComponentsOfType<FloatComponent>()){
-        comp.value += 5;
-    }
-    
-    assert(e11.GetWorld());
-    w.Despawn(e11);
-    assert(!e11.GetWorld());
+static std::chrono::system_clock timer;
 
-    //comp->value = 5;
+template<typename T>
+static inline decltype(timer)::duration time(const T& func){
+    auto begin_time = timer.now();
+    func();
+    auto end_time = timer.now();
+    return chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time);
+}
+
+
+int main(){
+    constexpr auto n_entities = 3'000'000;
+    World w;
+    auto dur = time([&]{
+        for(int i = 0; i < n_entities; i++){
+            TestEntity t;
+            w.Spawn(t);
+        }
+    });
+    cout << "Spawning " << n_entities << " entities took " << dur.count() << "µs\n";
+   
+    dur = time([&]{
+        for(auto& intcomp : w.GetAllComponentsOfType<IntComponent>()){
+            intcomp.value += 5;
+        }
+    });
+    cout << "Updating " << n_entities << " components took " << dur.count() << "µs\n";
 }

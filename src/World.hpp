@@ -101,6 +101,10 @@ public:
         return eptr;
     }
     
+    inline bool IsValid(pos_t sparseidx){
+        return sparseidx < sparse_set.size() && sparse_set[sparseidx] < dense_set.size() && sparse_set[sparseidx] != INVALID_INDEX;
+    }
+    
     inline auto begin(){
        return dense_set.begin();
     }
@@ -158,6 +162,14 @@ private:
     template<typename T>
     inline SparseComponentStore<T>* GetTypeRow(){
         return std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
+    }
+    
+    template<typename T>
+    inline bool ComponentIsValid(pos_t sparseidx){
+        if (component_map.find(RavEngine::CTTI<T>()) == component_map.end()){
+            return false;
+        }
+        return GetTypeRow<T>()->template IsValid(sparseidx);
     }
     
 public:
