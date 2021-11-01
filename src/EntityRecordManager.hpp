@@ -26,11 +26,12 @@ struct Index<T, U, Ts...> : std::integral_constant<std::size_t, 1 + Index<T, Ts.
 template <typename T, typename... Ts>
 constexpr std::size_t Index_v = Index<T, Ts...>::value;
 
-struct EntityRecordManager{
+class EntityRecordManager{
     EntityRecordManager() = delete;
     
-    static World dummyWorld;
-    
+    template<typename ... A>
+    friend class Entity;
+        
     template<typename ... A>
     struct EntityRecord{
         inline static constexpr std::size_t ntypes = sizeof ... (A);
@@ -180,6 +181,12 @@ struct EntityRecordManager{
         auto& record = recordData<A...>[entity.id];
         record.world = *world;
     }
+    
+    template<typename Entity_t, typename ... A>
+    inline static void Despawn(Entity_t entity){
+        MoveToWorld<Entity_t, A...>(entity, &dummyWorld);
+    }
+    static World dummyWorld;
 };
 
 // static member definitions

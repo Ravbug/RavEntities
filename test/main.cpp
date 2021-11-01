@@ -61,6 +61,14 @@ int main(){
     
     
     cout <<  (*e11.GetComponent<FloatComponent>()).value << endl;
+    
+    for(auto& comp : w.GetAllComponentsOfType<FloatComponent>()){
+        comp.value += 5;
+    }
+    
+    assert(e11.GetWorld());
+    w.Despawn(e11);
+    assert(!e11.GetWorld());
 
     //comp->value = 5;
 }

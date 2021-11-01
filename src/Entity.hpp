@@ -6,6 +6,9 @@ struct World;
 
 template<typename ... A>
 struct Entity{
+    
+    friend class World;
+    
     entity_id_t id;
     
     Entity() : id(EntityRecordManager::CreateEntity<A...>()){}
@@ -36,10 +39,15 @@ struct Entity{
         auto myself = *this;
         return EntityRecordManager::GetEntityWorld<decltype(myself),A...>(myself);
     }
-    
+private:
     inline void MoveToWorld(World* newWorld) const{
         auto myself = *this;
         EntityRecordManager::MoveToWorld<decltype(myself),A...>(myself,newWorld);
+    }
+    
+    inline void ReturnToStaging() const{
+        auto myself = *this;
+        EntityRecordManager::Despawn<decltype(myself), A...>(myself);
     }
 };
 

@@ -10,6 +10,10 @@ struct ComponentHandle{
     pos_t sparseindex;
     
     ComponentHandle(const decltype(world)& w, decltype(sparseindex) idx) : world(w), sparseindex(idx){}
+    
+    inline operator bool() const{
+        
+    }
 
     // overload operator->
     T& operator*() const{

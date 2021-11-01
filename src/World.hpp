@@ -100,10 +100,29 @@ public:
         auto eptr = aux_data.owner.template As<Entity_t>();
         return eptr;
     }
+    
+    inline auto begin(){
+       return dense_set.begin();
+    }
+    
+    inline auto begin() const{
+        return dense_set.begin();
+    }
+    
+    inline auto end(){
+        return dense_set.end();
+    }
+    
+    inline auto end() const{
+        return dense_set.end();
+    }
 };
 
-struct World{
-    
+class World{
+    friend class EntityRecordManager;
+    template<typename T>
+    friend class ComponentHandle;
+private:
     std::unordered_map<RavEngine::ctti_t, std::any> component_map;
     
     template<typename T>
@@ -118,30 +137,42 @@ struct World{
     template<typename Entity_t, typename T, typename ... Args>
     inline ComponentHandle<T> EmplaceComponent(Entity_t entity, Args ... arguments){
         MakeIfNotExists<T>();
-        auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
-        return row->template EmplaceComponent(entity,arguments...);
+        return GetTypeRow<T>()->template EmplaceComponent(entity,arguments...);
     }
     
     template<typename T>
     inline void DestroyComponent(const ComponentHandle<T>& handle){
-        auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
-        row->DestroyComponent(handle);
+        GetTypeRow<T>()->DestroyComponent(handle);
     }
     
     template<typename T>
     inline T& GetComponent(pos_t sparseidx){
-        auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
-        return row->GetComponent(sparseidx);
+        return GetTypeRow<T>()->GetComponent(sparseidx);
     }
     
     template<typename Entity_t, typename T>
     inline Entity_t GetComponentOwner(pos_t sparseidx){
-        auto row = std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
-        return row->template GetComponentOwner<Entity_t>(sparseidx);
+        return GetTypeRow<T>()->template GetComponentOwner<Entity_t>(sparseidx);
     }
     
+    template<typename T>
+    inline SparseComponentStore<T>* GetTypeRow(){
+        return std::any_cast<SparseComponentStore<T>>(&component_map[RavEngine::CTTI<T>()]);
+    }
+    
+public:
     template<typename Entity_t>
     inline void Spawn(Entity_t e){
         e.MoveToWorld(this);
+    }
+    
+    template<typename Entity_t>
+    inline void Despawn(Entity_t e){
+        e.ReturnToStaging();
+    }
+    
+    template<typename T>
+    inline SparseComponentStore<T>& GetAllComponentsOfType(){
+        return *GetTypeRow<T>();
     }
 };
