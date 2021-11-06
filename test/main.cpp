@@ -3,6 +3,7 @@
 #include "Entity.hpp"
 #include <iostream>
 #include <array>
+#include <chrono>
 
 using namespace std;
 
@@ -29,30 +30,41 @@ struct MyExtendedPrototype : public MyPrototype{
     }
 };
 
-int main(){
-    World w;
-    
-    std::array<MyPrototype, 50> entities;
-    for(auto& e : entities){
-        e = w.CreatePrototype<MyPrototype>();
-    }
+static std::chrono::system_clock timer;
 
-    std::array<MyExtendedPrototype, 50> exEntities;
-    for(auto& e : exEntities){
-        e = w.CreatePrototype<MyExtendedPrototype>();
+template<typename T>
+static inline decltype(timer)::duration time(const T& func){
+    auto begin_time = timer.now();
+    func();
+    auto end_time = timer.now();
+    return chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time);
+}
+
+int main(){
+    // perf tests
+    {
+        World w;
+        constexpr auto n_entities = 10'000'000;
+        auto dur = time([&]{
+            for(int i = 0; i < n_entities; i++){
+                w.CreatePrototype<MyExtendedPrototype>();
+            }
+        });
+        cout << "Spawning " << n_entities << " with 2 components took " << dur.count() << "µs\n";
+        
+        dur = time([&]{
+            w.Filter<IntComponent>([](auto& ic){
+                ic.value *= 2;
+            });
+        });
+        cout << "Single component filter on " << n_entities << " took " << dur.count() << "µs\n";
+        
+        dur = time([&]{
+            w.Filter<IntComponent,FloatComponent>([](auto& ic, auto& fc){
+                ic.value /= 3;
+                fc.value = ic.value * 6;
+            });
+        });
+        cout << "Two-component filter on " << n_entities << " entities took " << dur.count() << "µs\n";
     }
-    
-    entities[20].Destroy();
-    
-    int n_loops = 0;
-    w.Filter<IntComponent>([&](const IntComponent& ic){
-        n_loops ++;
-    });
-    cout << n_loops << " have IntComponent" << endl;
-    
-    n_loops = 0;
-    w.Filter<IntComponent,FloatComponent>([&](const auto& ic, const auto& fc){
-        n_loops ++;
-    });
-    cout << n_loops << " have IntComponent and FloatComponent" << endl;
 }

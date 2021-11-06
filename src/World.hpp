@@ -187,4 +187,8 @@ public:
             }
         }
     }
+    
+    ~World(){
+        //TODO: destroy all entities 
+    }
 };
