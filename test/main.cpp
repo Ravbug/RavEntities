@@ -1,99 +1,58 @@
-#include <EntityRecordManager.hpp>
-#include <Entity.hpp>
-#include <typeindex>
+#include "Registry.hpp"
+#include "World.hpp"
+#include "Entity.hpp"
 #include <iostream>
-#include "CTTI.hpp"
-#include <chrono>
+#include <array>
 
 using namespace std;
 
 struct IntComponent : public RavEngine::AutoCTTI{
     int value;
-    IntComponent(decltype(value) v ): value(v){}
 };
 
 struct FloatComponent : public RavEngine::AutoCTTI{
     float value;
-    FloatComponent(decltype(value) v ) : value(v){}
 };
 
-struct TestEntity : public Entity<IntComponent,FloatComponent>{
-    TestEntity(){
-        Create();
-        EmplaceComponent<IntComponent>(5);
-        EmplaceComponent<FloatComponent>(7.4f);
+struct MyPrototype : public Entity{
+    void Create(){
+        auto& comp = EmplaceComponent<IntComponent>();
+        comp.value = 5;
     }
 };
 
-struct test{
-    int x;
-    float y;
+struct MyExtendedPrototype : public MyPrototype{
+    void Create(){
+        MyPrototype::Create();
+        auto& comp = EmplaceComponent<FloatComponent>();
+        comp.value = 7.5;
+    }
 };
-
-struct test2{
-    std::string fatthing;
-};
-
-static std::chrono::system_clock timer;
-
-template<typename T>
-static inline decltype(timer)::duration time(const T& func){
-    auto begin_time = timer.now();
-    func();
-    auto end_time = timer.now();
-    return chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time);
-}
-
 
 int main(){
-    constexpr auto n_entities = 3'000'000;
-    std::unique_ptr<std::array<TestEntity,n_entities>> entities;
     World w;
     
-    auto dur = time([&]{
-        entities = std::make_unique<std::array<TestEntity,n_entities>>();
-    });
-    cout << "Creating " << n_entities << " entities took " << dur.count() << "µs\n";
+    std::array<MyPrototype, 50> entities;
+    for(auto& e : entities){
+        e = w.CreatePrototype<MyPrototype>();
+    }
 
-    dur = time([&]{
-        for(const auto& e : *entities){
-            w.Spawn(e);
-        }
+    std::array<MyExtendedPrototype, 50> exEntities;
+    for(auto& e : exEntities){
+        e = w.CreatePrototype<MyExtendedPrototype>();
+    }
+    
+    entities[20].Destroy();
+    
+    int n_loops = 0;
+    w.Filter<IntComponent>([&](const IntComponent& ic){
+        n_loops ++;
     });
-    cout << "Spawning " << n_entities << " entities took " << dur.count() << "µs\n";
-   
-    dur = time([&]{
-        for(auto& intcomp : w.GetAllComponentsOfType<IntComponent>()){
-            intcomp.value += 5;
-        }
+    cout << n_loops << " have IntComponent" << endl;
+    
+    n_loops = 0;
+    w.Filter<IntComponent,FloatComponent>([&](const auto& ic, const auto& fc){
+        n_loops ++;
     });
-    
-    cout << "Updating " << n_entities << " components took " << dur.count() << "µs\n";
-    
-    dur = time([&]{
-        for(const auto& e : *entities){
-            (*e.GetComponent<IntComponent>())->value += 6;
-        }
-    });
-    
-    cout << "GetComponent on " << n_entities << " entities took " << dur.count() << "µs\n";
-    
-    cout << "Before destroying, GetComponent returns " << ((*entities)[0].GetComponent<IntComponent>().IsValid() ? "valid" : "invalid") << "\n";
-    
-    dur = time([&]{
-        for(const auto& e : *entities){
-            e.DestroyComponent<IntComponent>();
-        }
-    });
-    
-    cout << "After destroying, GetComponent returns " << ((*entities)[0].GetComponent<IntComponent>().IsValid() ? "valid" : "invalid") << "\n";
-    
-    cout << "Destroy 1 component on " << n_entities << " entities took " << dur.count() << "µs\n";
-    
-    dur = time([&]{
-        for(const auto& e : *entities){
-            e.EmplaceComponent<IntComponent>(67);
-        }
-    });
-    cout << "Emplace 1 component pre-allocated on " << n_entities << " entities took " << dur.count() << "µs\n";
+    cout << n_loops << " have IntComponent and FloatComponent" << endl;
 }

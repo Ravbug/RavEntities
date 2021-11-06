@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(RavEntities2)
+project(RavEntities)
 
 file(GLOB SRC src/*.cpp src/*.hpp)
 

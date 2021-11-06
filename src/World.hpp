@@ -1,219 +1,190 @@
 #pragma once
 #include "unordered_vector.hpp"
 #include <queue>
-#include "Types.hpp"
-#include "TypeErasureEntity.hpp"
-#include "Component.hpp"
 #include "CTTI.hpp"
 #include <unordered_map>
 #include <any>
+#include <tuple>
 
-struct World;
-
-template<typename T, typename vec = std::vector<T>>
-class SparseComponentStore{
-    struct aux_data{
-        TypeErasureEntity owner;
-        pos_t posInSparse;
-        aux_data(const decltype(owner)& o, const decltype(posInSparse) p) : owner(o), posInSparse(p){}
-        aux_data(const aux_data& other) : owner(other.owner),posInSparse(other.posInSparse){}
-    };
-    
-    unordered_vector<T,vec> dense_set;
-    unordered_vector<aux_data,std::vector<aux_data>> aux_set;
-    std::vector<pos_t> sparse_set;
-    std::queue<pos_t> vendlist;
-    
-    std::reference_wrapper<World> world;
-public:
-    /**
-     Must tell the sparse map what the owning world is
-     */
-    SparseComponentStore(decltype(world) wptr ) : world(wptr){}
-    
-    inline auto Size() const{
-        return dense_set.size();
-    }
-    
-    /**
-     Create a component on an entity
-     */
-    template<typename Entity_t, typename ... Args>
-    inline ComponentHandle<T> EmplaceComponent(Entity_t entity, Args ... arguments){
-        // add the component to the dense set
-        dense_set.emplace(arguments...);
-        
-        
-        // find the sparse location
-        // if there's a hole, fill it, otherwise set to the end
-        pos_t idx;
-        if (!vendlist.empty()){
-            idx = vendlist.front();
-            vendlist.pop();
-            sparse_set[idx] = dense_set.size() - 1;
-        }
-        else{
-            idx = sparse_set.size();
-            sparse_set.push_back(dense_set.size() - 1);
-        }
-        
-        // add the component bookkeeping data
-        aux_set.emplace(entity,idx);
-        
-        return ComponentHandle<T>(world,idx);
-    }
-    
-    /**
-     Remove a component on an entity
-     */
-    inline void DestroyComponent(const ComponentHandle<T>& handle){
-        assert(&handle.world.get() == &world.get());   // this handle is not valid for this world!
-        assert(handle.sparseindex < sparse_set.size());
-        
-        // At this point, the EntityRecordManager has already been taken care of
-        
-        auto destroyIdx = sparse_set[handle.sparseindex];
-        dense_set.erase(dense_set.begin() + destroyIdx);
-        aux_set.erase(aux_set.begin() + destroyIdx);
-        
-        // this sparse index is now reusable
-        vendlist.push(handle.sparseindex);
-        sparse_set[handle.sparseindex] = INVALID_INDEX;
-        
-        // since this call could have moved memory, we need to update that
-        if (destroyIdx < dense_set.size()){
-            // what is there now?
-            auto& currentAux = aux_set[destroyIdx];
-            sparse_set[currentAux.posInSparse] = destroyIdx;    // point it at the location we just filled
-        }
-    }
-    
-    inline T* GetComponent(pos_t sparseidx){
-        assert(sparseidx < sparse_set.size());
-        assert(sparse_set[sparseidx] < dense_set.size());
-        return &dense_set[sparse_set[sparseidx]];
-    }
-    
-    inline bool IndexIsValid(pos_t sparseidx){
-        return sparseidx < sparse_set.size() && sparse_set[sparseidx] != INVALID_INDEX;
-    }
-    
-    template<typename Entity_t>
-    inline Entity_t GetComponentOwner(pos_t sparseidx) const{
-        auto& aux_data = aux_set[sparse_set[sparseidx]];
-        auto eptr = aux_data.owner.template As<Entity_t>();
-        return eptr;
-    }
-    
-    inline bool IsValid(pos_t sparseidx){
-        return sparseidx < sparse_set.size() && sparse_set[sparseidx] < dense_set.size() && sparse_set[sparseidx] != INVALID_INDEX;
-    }
-    
-    inline auto begin(){
-       return dense_set.begin();
-    }
-    
-    inline auto begin() const{
-        return dense_set.begin();
-    }
-    
-    inline auto end(){
-        return dense_set.end();
-    }
-    
-    inline auto end() const{
-        return dense_set.end();
-    }
-};
+struct Entity;
 
 class World{
-    friend class EntityRecordManager;
-    template<typename T>
-    friend class ComponentHandle;
-private:
-    std::unordered_map<RavEngine::ctti_t, std::any> component_map;
+    
+    std::vector<entity_t> localToGlobal;
+    std::queue<entity_t> available;
+    
+    friend class Entity;
+    friend class Registry;
     
     template<typename T>
-    inline SparseComponentStore<T>* MakeIfNotExists(){
-        constexpr auto id = RavEngine::CTTI<T>();
-        auto it = component_map.find(id);
-        if (it == component_map.end()){
-            it = component_map.emplace(std::make_pair(id,SparseComponentStore<T>(*this))).first;
+    class SparseSet{
+        unordered_vector<T> dense_set;
+        unordered_vector<entity_t> aux_set;
+        std::vector<entity_t> sparse_set;
+        
+    public:
+        
+        template<typename ... A>
+        inline T& Emplace(entity_t local_id, A ... args){
+            dense_set.emplace(args...);
+            aux_set.emplace(local_id);
+            sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
+            
+            sparse_set[local_id] = dense_set.size()-1;
+            return dense_set[dense_set.size()-1];
         }
-        auto ptr = std::any_cast<SparseComponentStore<T>>(&(*it).second);
+        
+        inline void Destroy(entity_t local_id){
+            assert(local_id < sparse_set.size());
+            // call the destructor
+            dense_set[sparse_set[local_id]].~T();
+            aux_set[sparse_set[local_id]] = INVALID_ENTITY;
+            sparse_set[local_id] = INVALID_INDEX;
+        }
+        
+        inline bool HasComponent(entity_t local_id){
+            return sparse_set[local_id] != INVALID_ENTITY;
+        }
+        
+        auto begin(){
+            return dense_set.begin();
+        }
+        
+        auto end(){
+            return dense_set.end();
+        }
+        
+        auto begin() const{
+            return dense_set.begin();
+        }
+        
+        auto end() const{
+            return dense_set.end();
+        }
+        
+        // get by dense index, not by entity ID
+        T& Get(entity_t idx){
+            return dense_set[idx];
+        }
+        
+        auto GetOwner(entity_t idx){
+            return aux_set[idx];
+        }
+        
+        auto DenseSize() const{
+            return dense_set.size();
+        }
+    };
+    
+    struct SparseSetErased{
+        std::any set;
+        std::function<void(entity_t id)> destroyFn;
+        
+        template<typename T>
+        inline SparseSet<T>* GetSet() {
+            return std::any_cast<SparseSet<T>>(&set);
+        }
+        
+        template<typename T>
+        SparseSetErased(const SparseSet<T>& s) : set(s), destroyFn([&](entity_t local_id){
+            auto ptr = GetSet<T>();
+            if (ptr->HasComponent(local_id)){
+                ptr->Destroy(local_id);
+            }
+        }){}
+    };
+    
+    std::unordered_map<RavEngine::ctti_t, SparseSetErased> componentMap;
+
+    inline void Destroy(entity_t local_id){
+        // go down the list of all component types registered in this world
+        // and call destroy if the entity has that component type
+        // possible optimization: vector of vector<ctti_t> to make this faster?
+        for(const auto& pair : componentMap){
+            pair.second.destroyFn(local_id);
+        }
+    }
+    
+    template<typename T>
+    inline SparseSet<T>* MakeIfNotExists(){
+        auto id = RavEngine::CTTI<T>();
+        auto it = componentMap.find(id);
+        if (it == componentMap.end()){
+            it = componentMap.emplace(std::make_pair(id,SparseSet<T>())).first;
+        }
+        auto ptr = (*it).second.template GetSet<T>();
         assert(ptr != nullptr);
         return ptr;
     }
     
-    template<typename Entity_t, typename T, typename ... Args>
-    inline ComponentHandle<T> EmplaceComponent(Entity_t entity, Args ... arguments){
-        return MakeIfNotExists<T>()->template EmplaceComponent(entity,arguments...);
+    template<typename T, typename ... A>
+    inline T& EmplaceComponent(entity_t local_id, A ... args){
+        auto ptr = MakeIfNotExists<T>();
+        
+        //TODO: detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
+        return ptr->Emplace(local_id,args...);
     }
     
     template<typename T>
-    inline void DestroyComponent(const ComponentHandle<T>& handle){
-        auto ptr = GetTypeRow<T>();
-        if (ptr){
-            ptr->DestroyComponent(handle);
-        }
-        else{
-            assert(false);  // cannot destroy an invalid handle!
-        }
+    inline void DestroyComponent(entity_t local_id){
+        // set owner of that slot to invalid_entity
+        // manually invoke the destructor on the T at that slot
     }
     
     template<typename T>
-    inline T* GetComponent(pos_t sparseidx){
-        auto ptr = GetTypeRow<T>();
-        if (ptr){
-            return ptr->GetComponent(sparseidx);
-        }
-        return nullptr;
-    }
-    
-    template<typename Entity_t, typename T>
-    inline Entity_t GetComponentOwner(pos_t sparseidx){
-        auto ptr = GetTypeRow<T>();
-        if (ptr){
-            return ptr->template GetComponentOwner<Entity_t>(sparseidx);
-        }
-        else{
-            return Entity_t();  // default to invalid handle
-        }
+    inline SparseSet<T>* GetRange(){
+        auto& set = componentMap.at(RavEngine::CTTI<T>());
+        return set.template GetSet<T>();
     }
     
     template<typename T>
-    inline SparseComponentStore<T>* GetTypeRow(){
-        auto it = component_map.find(RavEngine::CTTI<T>());
-        if (it == component_map.end()){
-            return nullptr;
-        }
-        auto ptr = std::any_cast<SparseComponentStore<T>>(&(*it).second);
-        assert(ptr != nullptr);
-        return ptr;
+    inline void FilterValidityCheck(entity_t id, bool& satisfies){
+        // in this order so that the first one the entity does not have aborts the rest of them
+        satisfies = satisfies && componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->HasComponent(id);
     }
     
     template<typename T>
-    inline bool ComponentIsValid(pos_t sparseidx){
-        auto ptr = GetTypeRow<T>();
-        if (ptr == nullptr){
-            return false;
-        }
-        return ptr->IndexIsValid(sparseidx);
+    inline T& FilterComponentGet(entity_t idx){
+        return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->Get(idx);
     }
-    
+   
 public:
-    template<typename Entity_t>
-    inline void Spawn(Entity_t e){
-        e.MoveToWorld(this);
+    entity_t CreateEntity();
+    
+    template<typename T, typename ... A>
+    inline T CreatePrototype(A ... args){
+        auto id = CreateEntity();
+        T en;
+        en.id = id;
+        en.Create(args...);
+        return en;
     }
     
-    template<typename Entity_t>
-    inline void Despawn(Entity_t e){
-        e.ReturnToStaging();
-    }
-    
-    template<typename T>
-    inline SparseComponentStore<T>& GetAllComponentsOfType(){
-        return *GetTypeRow<T>();
+    template<typename ... A, typename func>
+    inline void Filter(const func& f){
+        constexpr auto n_types = sizeof ... (A);
+        
+        auto mainFilter = GetRange<typename std::tuple_element<0, std::tuple<A...> >::type>();
+        
+        for(size_t i = 0; i < mainFilter->DenseSize(); i++){
+            auto& item = mainFilter->Get(i);
+            
+            if constexpr (n_types == 1){
+                f(item);
+            }
+            else{
+                // does this entity have all of the other required components?
+                const auto owner = mainFilter->GetOwner(i);
+                if (EntityIsValid(owner)){
+                    bool satisfies = true;
+                    (FilterValidityCheck<A>(owner,satisfies), ...);
+                    if (satisfies){
+                        // query all the components and call the function
+                        f(FilterComponentGet<A>(i)...);
+                    }
+                }
+                
+            }
+        }
     }
 };
