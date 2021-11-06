@@ -8,6 +8,18 @@
 
 struct Entity;
 
+template <typename T, typename... Ts>
+struct Index;
+
+template <typename T, typename... Ts>
+struct Index<T, T, Ts...> : std::integral_constant<std::size_t, 0> {};
+
+template <typename T, typename U, typename... Ts>
+struct Index<T, U, Ts...> : std::integral_constant<std::size_t, 1 + Index<T, Ts...>::value> {};
+
+template <typename T, typename... Ts>
+constexpr std::size_t Index_v = Index<T, Ts...>::value;
+
 class World{
     
     std::vector<entity_t> localToGlobal;
@@ -37,8 +49,12 @@ class World{
         inline void Destroy(entity_t local_id){
             assert(local_id < sparse_set.size());
             // call the destructor
-            dense_set[sparse_set[local_id]].~T();
-            aux_set[sparse_set[local_id]] = INVALID_ENTITY;
+            dense_set.erase(dense_set.begin() + sparse_set[local_id]);
+            aux_set.erase(aux_set.begin() + sparse_set[local_id]);
+            
+            // update the location it points
+            auto owner = aux_set[sparse_set[local_id]];
+            sparse_set[owner] = local_id;
             sparse_set[local_id] = INVALID_INDEX;
         }
         
@@ -138,16 +154,21 @@ class World{
     }
     
     template<typename T>
-    inline void FilterValidityCheck(entity_t id, bool& satisfies){
+    inline void FilterValidityCheck(entity_t id, SparseSetErased* set, bool& satisfies){
         // in this order so that the first one the entity does not have aborts the rest of them
-        satisfies = satisfies && componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->HasComponent(id);
+        satisfies = satisfies && set->template GetSet<T>()->HasComponent(id);
     }
     
     template<typename T>
-    inline T& FilterComponentGet(entity_t idx){
-        return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->Get(idx);
+    inline T& FilterComponentGet(entity_t idx, SparseSetErased* ptr){
+        return ptr->template GetSet<T>()->Get(idx);
     }
    
+    template<typename T>
+    inline SparseSetErased* FilterGetSparseSet(){
+        return &(componentMap.at(RavEngine::CTTI<T>()));
+    }
+    
 public:
     entity_t CreateEntity();
     
@@ -163,27 +184,28 @@ public:
     template<typename ... A, typename func>
     inline void Filter(const func& f){
         constexpr auto n_types = sizeof ... (A);
+        static_assert(n_types > 0, "Must supply a type to query for");
         
         auto mainFilter = GetRange<typename std::tuple_element<0, std::tuple<A...> >::type>();
         
-        for(size_t i = 0; i < mainFilter->DenseSize(); i++){
-            auto& item = mainFilter->Get(i);
-            
-            if constexpr (n_types == 1){
+        if constexpr (n_types == 1){
+            for(size_t i = 0; i < mainFilter->DenseSize(); i++){
+                auto& item = mainFilter->Get(i);
                 f(item);
             }
-            else{
-                // does this entity have all of the other required components?
+        }
+        else{
+            std::array<SparseSetErased*, n_types> ptrs{ FilterGetSparseSet<A>()...};
+            // does this entity have all of the other required components?
+            for(size_t i = 0; i < mainFilter->DenseSize(); i++){
                 const auto owner = mainFilter->GetOwner(i);
                 if (EntityIsValid(owner)){
                     bool satisfies = true;
-                    (FilterValidityCheck<A>(owner,satisfies), ...);
+                    (FilterValidityCheck<A>(owner, ptrs[Index_v<A, A...>], satisfies), ...);
                     if (satisfies){
-                        // query all the components and call the function
-                        f(FilterComponentGet<A>(i)...);
+                        f(FilterComponentGet<A>(i,ptrs[Index_v<A, A...>])...);
                     }
                 }
-                
             }
         }
     }
