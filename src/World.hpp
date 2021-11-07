@@ -259,6 +259,8 @@ public:
         }
     }
     
+    // this does not check if the entity actually has the component
+    // instead it iterates over keys in the hashtable
     template<typename func_t>
     inline void EnumerateComponentsOn(entity_t local_id, const func_t& fn){
         for(auto& componentRow : componentMap){
@@ -275,7 +277,7 @@ public:
             // call the moveFn to move the other entity data into this
             sp_erased.moveFn(other_local_id,newID,this);
         });
-        
+        other->localToGlobal[other_local_id] = INVALID_ENTITY;
         return newID;
     }
     

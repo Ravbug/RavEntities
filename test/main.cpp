@@ -203,5 +203,52 @@ int main() {
         });
         cout << "\nAfter moving entities to w1, w1count = " << w1count << ", w2count = " << w2count << "\n";
     }
+    {
+        World w;
+        auto entities = make_unique<std::array<Entity, 20'000'000>>();
+        
+        auto dur = time([&]{
+            for(auto& entity : *entities){
+                entity = w.CreatePrototype<Entity>();
+            }
+        });
+        cout << "Creating " << entities->size() << " entities with no components took " << dur.count() << "µs\n";
+        
+        dur = time([&]{
+            for(auto& entity : *entities){
+                entity.EmplaceComponent<IntComponent>();
+                entity.EmplaceComponent<FloatComponent>();
+            }
+        });
+        cout << "Adding 2 components to " << entities->size() << " entities took " << dur.count() << "µs\n";
+        
+        dur = time([&]{
+            for(auto& entity : *entities){
+                entity.DestroyComponent<IntComponent>();
+                entity.DestroyComponent<FloatComponent>();
+            }
+        });
+        cout << "Deleting 2 components from " << entities->size() << " entities took " << dur.count() << "µs\n";
+        
+        dur = time([&]{
+            for(auto& entity : *entities){
+                entity.EmplaceComponent<IntComponent>();
+                entity.EmplaceComponent<FloatComponent>();
+            }
+        });
+        cout << "Adding 2 components to " << entities->size() << " entities with space already existing took " << dur.count() << "µs\n";
+        
+        for(auto& entity : *entities){
+            entity.DestroyComponent<IntComponent>();
+            entity.DestroyComponent<FloatComponent>();
+        }
+        
+        dur = time([&]{
+            for(auto& entity : *entities){
+                entity.Destroy();
+            }
+        });
+        cout << "Destroying " << entities->size() << " entities with no components took " << dur.count() << "µs\n";
+    }
 }
    
