@@ -90,4 +90,8 @@ class Registry{
         data.world = nullptr;
         data.idInWorld = INVALID_ENTITY;
     }
+    
+    static inline void MoveEntityToWorld(entity_t global_id, World& newWorld){
+        
+    }
 };

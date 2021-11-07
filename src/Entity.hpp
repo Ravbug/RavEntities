@@ -38,8 +38,8 @@ struct Entity{
         return Registry::GetWorld(id);
     }
     
-    inline void MoveTo(World* newWorld){
-        
+    inline void MoveTo(World& newWorld){
+        Registry::MoveEntityToWorld(id, newWorld);
     }
     
     // default create impl

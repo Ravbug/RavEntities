@@ -80,6 +80,7 @@ int main() {
             });
         cout << "Two-component (best) filter on " << n_entities << " entities took " << dur.count() << "µs\n";
     }
+    // filter tests
     {
         World w;
         auto e = w.CreatePrototype<Entity>();
@@ -120,6 +121,7 @@ int main() {
 
         assert((e.GetWorld() == e2.GetWorld()));
     }
+    // create and destroy
     {
         World w;
         std::array<MyExtendedPrototype, 30> entities;
@@ -153,7 +155,51 @@ int main() {
             });
             cout << "After destroying " << 20-4 << " 2-component entities, filter yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
         }
+    }
+    // move between worlds
+    {
+        World w1, w2;
         
+        std::array<MyPrototype, 10> w1entities;
+        std::array<MyPrototype, 20> w2entities;
+        
+        for(auto& e : w1entities){
+            e = w1.CreatePrototype<MyPrototype>();
+        }
+        
+        for(auto& e : w2entities){
+            e = w2.CreatePrototype<MyPrototype>();
+        }
+        
+        int w1count = 0;
+        w1.Filter<IntComponent>([&](auto& ic){
+            ic.value = 1;
+            w1count++;
+        });
+        
+        int w2count = 0;
+        w2.Filter<IntComponent>([&](auto& ic){
+            ic.value = 2;
+            w2count++;
+        });
+        
+        cout << "w1count = " << w1count << ", w2count = " << w2count << "\n";
+        
+        // move some entities from w2 to w1
+        for(int i = 0; i < w2entities.size()/2; i++){
+            w2entities[i].MoveTo(w1);
+        }
+        
+        w1count = 0;
+        w1.Filter<IntComponent>([&](const auto& ic){
+            w1count++;
+            cout << ic.value << " ";
+        });
+        w2count = 0;
+        w2.Filter<IntComponent>([&](const auto& ic){
+            w2count++;
+        });
+        cout << "\n After moving entities to w1, w1count = " << w1count << ", w2count = " << w2count << "\n";
     }
 }
    
