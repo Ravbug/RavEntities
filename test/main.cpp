@@ -114,6 +114,8 @@ int main() {
             count++;
         });
         cout << "After deleting the only intcomponent, the intcomponent count is " << count << "\n";
+
+        assert((e.GetWorld() == e2.GetWorld()));
     }
 }
    

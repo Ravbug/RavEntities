@@ -3,10 +3,10 @@
 #include <queue>
 #include "CTTI.hpp"
 #include <unordered_map>
-#include <any>
 #include <tuple>
 #include <functional>
 #include <cassert>
+#include <array>
 
 struct Entity;
 
@@ -103,21 +103,35 @@ class World{
     };
     
     struct SparseSetErased{
-        std::any set;
+        constexpr static size_t buf_size = sizeof(SparseSet<size_t>);   // we use size_t here because all SparseSets are the same size 
+        std::array<char, buf_size> buffer;
         std::function<void(entity_t id)> destroyFn;
+        std::function<void(void)> deallocFn;
         
         template<typename T>
         inline SparseSet<T>* GetSet() {
-            return std::any_cast<SparseSet<T>>(&set);
+            return reinterpret_cast<SparseSet<T>*>(buffer.data());
         }
         
+        // the discard parameter is here to make the template work
         template<typename T>
-        SparseSetErased(const SparseSet<T>& s) : set(s), destroyFn([&](entity_t local_id){
+        SparseSetErased(T* discard) : destroyFn([&](entity_t local_id){
             auto ptr = GetSet<T>();
             if (ptr->HasComponent(local_id)){
                 ptr->Destroy(local_id);
             }
-        }){}
+            }),
+            deallocFn([&]() {
+                GetSet<T>()->~SparseSet<T>();
+            })
+        {
+            static_assert(sizeof(SparseSet<T>) <= buf_size);
+            new (buffer.data()) SparseSet<T>();
+        }
+
+        ~SparseSetErased() {
+            deallocFn();
+        }
     };
     
     std::unordered_map<RavEngine::ctti_t, SparseSetErased> componentMap;
@@ -136,7 +150,8 @@ class World{
         auto id = RavEngine::CTTI<T>();
         auto it = componentMap.find(id);
         if (it == componentMap.end()){
-            it = componentMap.emplace(std::make_pair(id,SparseSet<T>())).first;
+            T* discard; // to make the template work
+            it = componentMap.emplace(std::make_pair(id,discard)).first;
         }
         auto ptr = (*it).second.template GetSet<T>();
         assert(ptr != nullptr);

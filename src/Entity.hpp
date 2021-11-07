@@ -33,6 +33,10 @@ struct Entity{
     inline void Destroy(){
         Registry::DestroyEntity(id);
     }
+
+    inline World* GetWorld() const {
+        return Registry::GetWorld(id);
+    }
     
     inline void MoveTo(World* newWorld){
         
