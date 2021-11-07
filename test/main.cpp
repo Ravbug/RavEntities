@@ -195,11 +195,13 @@ int main() {
             w1count++;
             cout << ic.value << " ";
         });
+        cout << "\n";
         w2count = 0;
         w2.Filter<IntComponent>([&](const auto& ic){
             w2count++;
+            cout << ic.value << " ";
         });
-        cout << "\n After moving entities to w1, w1count = " << w1count << ", w2count = " << w2count << "\n";
+        cout << "\nAfter moving entities to w1, w1count = " << w1count << ", w2count = " << w2count << "\n";
     }
 }
    
