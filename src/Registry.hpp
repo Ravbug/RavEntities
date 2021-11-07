@@ -41,7 +41,7 @@ class Registry{
     // invoked by the world
     static inline void DestroyEntity(entity_t global_id){
         // make this entity's ID available for reuse
-        available.push(global_id);
+        ReleaseEntity(global_id);
         
         auto& data = entityData[global_id];
         data.world->Destroy(data.idInWorld);        
@@ -80,5 +80,13 @@ class Registry{
         assert(EntityIsValid(id));
         auto& data = entityData[id];
         return data.world;
+    }
+
+    // free an entity for reuse. this is called on world destruction
+    static inline void ReleaseEntity(entity_t global_id) {
+        available.push(global_id);
+        auto& data = entityData[global_id];
+        data.world = nullptr;
+        data.idInWorld = INVALID_ENTITY;
     }
 };

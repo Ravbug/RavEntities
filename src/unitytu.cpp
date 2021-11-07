@@ -19,3 +19,12 @@ entity_t World::CreateEntity(){
     localToGlobal[id] = Registry::CreateEntity(this, id);
     return localToGlobal[id];
 }
+
+World::~World() {
+    //TODO: destroy all entities 
+    for (const auto& e : localToGlobal) {
+        if (EntityIsValid(e)) {
+            Registry::ReleaseEntity(e);
+        }
+    }
+}

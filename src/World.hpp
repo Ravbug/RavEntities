@@ -143,6 +143,8 @@ class World{
         for(const auto& pair : componentMap){
             pair.second.destroyFn(local_id);
         }
+        // unset localToGlobal
+        localToGlobal[local_id] = INVALID_ENTITY;
     }
     
     template<typename T>
@@ -246,7 +248,5 @@ public:
         }
     }
     
-    ~World(){
-        //TODO: destroy all entities 
-    }
+    ~World();
 };
