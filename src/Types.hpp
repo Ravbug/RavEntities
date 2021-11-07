@@ -1,5 +1,6 @@
 #pragma once
-#include <numeric>
+#include <cstdint>
+#include <limits>
 
 using entity_t = uint32_t;
 using pos_t = uint32_t;
