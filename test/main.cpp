@@ -1,17 +1,18 @@
 #include "Registry.hpp"
 #include "World.hpp"
 #include "Entity.hpp"
+#include "ComponentHandle.hpp"
 #include <iostream>
 #include <array>
 #include <chrono>
 
 using namespace std;
 
-struct IntComponent : public RavEngine::AutoCTTI{
+struct IntComponent {
     int value;
 };
 
-struct FloatComponent : public RavEngine::AutoCTTI{
+struct FloatComponent{
     float value;
 };
 
@@ -99,7 +100,9 @@ int main() {
             ic.value *= 2;
         });
         
-        assert(e.GetComponent<IntComponent>().value == 6 * 2);
+        ComponentHandle<IntComponent> handle(e);
+        
+        assert(handle->value == 6 * 2);
 
         e.DestroyComponent<IntComponent>();
         assert(e.HasComponent<IntComponent>() == false);
@@ -116,6 +119,41 @@ int main() {
         cout << "After deleting the only intcomponent, the intcomponent count is " << count << "\n";
 
         assert((e.GetWorld() == e2.GetWorld()));
+    }
+    {
+        World w;
+        std::array<MyExtendedPrototype, 30> entities;
+        for( auto& e : entities){
+            e = w.CreatePrototype<MyExtendedPrototype>();
+        }
+        {
+            int icount = 0;
+            w.Filter<IntComponent>([&](auto& fc) {
+                icount++;
+            });
+            int fcount = 0;
+            w.Filter<FloatComponent>([&](auto& fc) {
+                fcount++;
+            });
+            cout << "Spawning " << entities.size() << " 2-component entities yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
+        }
+        
+        for(int i = 4; i < 20; i++){
+            entities[i].Destroy();
+        }
+        
+        {
+            int icount = 0;
+            w.Filter<IntComponent>([&](auto& fc) {
+                icount++;
+            });
+            int fcount = 0;
+            w.Filter<FloatComponent>([&](auto& fc) {
+                fcount++;
+            });
+            cout << "After destroying " << 20-4 << " 2-component entities, filter yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
+        }
+        
     }
 }
    
