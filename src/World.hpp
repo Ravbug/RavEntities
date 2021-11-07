@@ -107,6 +107,7 @@ class World{
         std::array<char, buf_size> buffer;
         std::function<void(entity_t id)> destroyFn;
         std::function<void(void)> deallocFn;
+        std::function<void(entity_t, entity_t, World*)> moveFn;
         
         template<typename T>
         inline SparseSet<T>* GetSet() {
@@ -115,14 +116,24 @@ class World{
         
         // the discard parameter is here to make the template work
         template<typename T>
-        SparseSetErased(T* discard) : destroyFn([&](entity_t local_id){
-            auto ptr = GetSet<T>();
-            if (ptr->HasComponent(local_id)){
-                ptr->Destroy(local_id);
-            }
+        SparseSetErased(T* discard) :
+            destroyFn([&](entity_t local_id){
+                auto ptr = GetSet<T>();
+                if (ptr->HasComponent(local_id)){
+                    ptr->Destroy(local_id);
+                }
             }),
             deallocFn([&]() {
                 GetSet<T>()->~SparseSet<T>();
+            }),
+            moveFn([&](entity_t localID, entity_t otherLocalID, World* otherWorld){
+                auto sp = GetSet<T>();
+                if (sp->HasComponent(localID)){
+                    auto& comp = sp->GetComponent(localID);
+                    otherWorld->EmplaceComponent<T>(otherLocalID, std::move(comp));
+                    // then delete it from here
+                    sp->Destroy(localID);
+                }
             })
         {
             static_assert(sizeof(SparseSet<T>) <= buf_size);
@@ -246,6 +257,26 @@ public:
                 }
             }
         }
+    }
+    
+    template<typename func_t>
+    inline void EnumerateComponentsOn(entity_t local_id, const func_t& fn){
+        for(auto& componentRow : componentMap){
+            auto& sp_erased = componentRow.second;
+            fn(sp_erased);
+        }
+    }
+    
+    // return the new local id
+    inline entity_t AddEntityFrom(World* other,entity_t other_local_id){
+        auto newID = CreateEntity();
+        
+        other->EnumerateComponentsOn(other_local_id, [&](SparseSetErased& sp_erased){
+            // call the moveFn to move the other entity data into this
+            sp_erased.moveFn(other_local_id,newID,this);
+        });
+        
+        return newID;
     }
     
     ~World();

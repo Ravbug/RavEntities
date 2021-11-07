@@ -92,6 +92,10 @@ class Registry{
     }
     
     static inline void MoveEntityToWorld(entity_t global_id, World& newWorld){
+        assert(EntityIsValid(global_id));
         
+        auto& data = entityData[global_id];
+        data.idInWorld = newWorld.AddEntityFrom(data.world,data.idInWorld);
+        data.world = &newWorld;
     }
 };
