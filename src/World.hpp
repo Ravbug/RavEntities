@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <any>
 #include <tuple>
+#include <functional>
+#include <cassert>
 
 struct Entity;
 
@@ -48,17 +50,25 @@ class World{
         
         inline void Destroy(entity_t local_id){
             assert(local_id < sparse_set.size());
+            assert(HasComponent(local_id)); // Cannot destroy a component on an entity that does not have one!
             // call the destructor
             dense_set.erase(dense_set.begin() + sparse_set[local_id]);
             aux_set.erase(aux_set.begin() + sparse_set[local_id]);
-            
-            // update the location it points
-            auto owner = aux_set[sparse_set[local_id]];
-            sparse_set[owner] = local_id;
+
+            if (!aux_set.empty()) {
+                // update the location it points
+                auto owner = aux_set[sparse_set[local_id]];
+                sparse_set[owner] = local_id;
+                
+            }
             sparse_set[local_id] = INVALID_INDEX;
         }
+
+        inline T& GetComponent(entity_t local_id){
+            return dense_set[sparse_set[local_id]];
+        }
         
-        inline bool HasComponent(entity_t local_id){
+        inline bool HasComponent(entity_t local_id) const{
             return sparse_set[local_id] != INVALID_ENTITY;
         }
         
@@ -83,7 +93,7 @@ class World{
             return dense_set[idx];
         }
         
-        auto GetOwner(entity_t idx){
+        auto GetOwner(entity_t idx) const{
             return aux_set[idx];
         }
         
@@ -140,11 +150,20 @@ class World{
         //TODO: detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
         return ptr->Emplace(local_id,args...);
     }
+
+    template<typename T>
+    inline T& GetComponent(entity_t local_id) {
+        return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(local_id);
+    }
+
+    template<typename T>
+    inline bool HasComponent(entity_t local_id) {
+        return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->HasComponent(local_id);
+    }
     
     template<typename T>
     inline void DestroyComponent(entity_t local_id){
-        // set owner of that slot to invalid_entity
-        // manually invoke the destructor on the T at that slot
+        componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->Destroy(local_id);
     }
     
     template<typename T>
@@ -169,9 +188,9 @@ class World{
         return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>();
     }
     
-public:
     entity_t CreateEntity();
-    
+
+public:
     template<typename T, typename ... A>
     inline T CreatePrototype(A ... args){
         auto id = CreateEntity();

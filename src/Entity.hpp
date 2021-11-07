@@ -19,6 +19,16 @@ struct Entity{
     inline void DestroyComponent(){
         Registry::DestroyComponent<T>(id);
     }
+
+    template<typename T>
+    inline bool HasComponent() {
+        return Registry::HasComponent<T>(id);
+    }
+
+    template<typename T>
+    inline T& GetComponent() {
+       return Registry::GetComponent<T>(id);
+    }
     
     inline void Destroy(){
         Registry::DestroyEntity(id);

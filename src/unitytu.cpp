@@ -17,5 +17,5 @@ entity_t World::CreateEntity(){
         localToGlobal.push_back(INVALID_ENTITY);
     }
     localToGlobal[id] = Registry::CreateEntity(this, id);
-    return id;
+    return localToGlobal[id];
 }

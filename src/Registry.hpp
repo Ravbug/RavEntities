@@ -3,6 +3,7 @@
 #include <queue>
 #include <vector>
 #include "World.hpp"
+#include <cassert>
 
 struct World;
 
@@ -61,5 +62,17 @@ class Registry{
         data.world->DestroyComponent<T>(data.idInWorld);
     }
     
-    
+    template<typename T>
+    static inline T& GetComponent(entity_t id) {
+        assert(EntityIsValid(id));
+        auto& data = entityData[id];
+        return data.world->GetComponent<T>(data.idInWorld);
+    }
+
+    template<typename T>
+    static inline bool HasComponent(entity_t id) {
+        assert(EntityIsValid(id));
+        auto& data = entityData[id];
+        return data.world->HasComponent<T>(data.idInWorld);
+    }
 };

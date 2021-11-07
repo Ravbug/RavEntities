@@ -30,49 +30,90 @@ struct MyExtendedPrototype : public MyPrototype{
     }
 };
 
-static std::chrono::system_clock timer;
 
 template<typename T>
-static inline decltype(timer)::duration time(const T& func){
-    auto begin_time = timer.now();
+static auto time(const T& func){
+    auto begin_time = std::chrono::system_clock::now();
     func();
-    auto end_time = timer.now();
+    auto end_time = std::chrono::system_clock::now();
     return chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time);
 }
 
-int main(){
+int main() {
     // perf tests
     {
         World w;
-        constexpr auto n_entities = 20'000'000;
-        auto dur = time([&]{
-            for(int i = 0; i < n_entities; i++){
+        constexpr auto n_entities =
+#ifdef _DEBUG
+            2'000;
+#else
+            20'000'000;
+#endif
+        auto dur = time([&] {
+            for (int i = 0; i < n_entities; i++) {
                 w.CreatePrototype<MyExtendedPrototype>();
             }
-        });
+            });
         cout << "Spawning " << n_entities << " with 2 components took " << dur.count() << "µs\n";
-        
-        dur = time([&]{
-            w.Filter<IntComponent>([](auto& ic){
+
+        dur = time([&] {
+            w.Filter<IntComponent>([](auto& ic) {
                 ic.value *= 2;
+                });
             });
-        });
         cout << "Single component filter on " << n_entities << " took " << dur.count() << "µs\n";
-        
-        dur = time([&]{
-            w.Filter<IntComponent,FloatComponent>([](auto& ic, auto& fc){
+
+        dur = time([&] {
+            w.Filter<IntComponent, FloatComponent>([](auto& ic, auto& fc) {
                 ic.value /= 3;
                 fc.value = ic.value * 6;
+                });
             });
-        });
         cout << "Two-component (worst) filter on " << n_entities << " entities took " << dur.count() << "µs\n";
-        
-        dur = time([&]{
-            w.Filter<FloatComponent,IntComponent>([](auto& fc, auto& ic){
+
+        dur = time([&] {
+            w.Filter<FloatComponent, IntComponent>([](auto& fc, auto& ic) {
                 ic.value /= 3;
                 fc.value = ic.value * 6;
+                });
             });
-        });
         cout << "Two-component (best) filter on " << n_entities << " entities took " << dur.count() << "µs\n";
     }
+    {
+        World w;
+        auto e = w.CreatePrototype<Entity>();
+        auto& ic = e.EmplaceComponent<IntComponent>();
+        ic.value = 6;
+
+        auto e2 = w.CreatePrototype<Entity>();
+        e2.EmplaceComponent<FloatComponent>().value = 54.2;
+
+        int count = 0;
+        w.Filter<IntComponent, FloatComponent>([&](auto& ic, auto& fc) {
+            count++;
+            });
+        assert(count == 0);
+        cout << "A 2-filter with 0 possibilities found " << count << " results\n";
+
+        w.Filter<IntComponent>([&](auto& ic) {
+            ic.value *= 2;
+        });
+        
+        assert(e.GetComponent<IntComponent>().value == 6 * 2);
+
+        e.DestroyComponent<IntComponent>();
+        assert(e.HasComponent<IntComponent>() == false);
+        count = 0;
+        w.Filter<FloatComponent>([&](auto& fc) {
+            count++;
+        });
+        cout << "After deleting the only intcomponent, the floatcomponent count is " << count << "\n";
+
+        count = 0;
+        w.Filter<IntComponent>([&](auto& fc) {
+            count++;
+        });
+        cout << "After deleting the only intcomponent, the intcomponent count is " << count << "\n";
+    }
 }
+   
