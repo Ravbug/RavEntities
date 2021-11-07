@@ -154,19 +154,19 @@ class World{
     }
     
     template<typename T>
-    inline void FilterValidityCheck(entity_t id, SparseSetErased* set, bool& satisfies){
+    inline void FilterValidityCheck(entity_t id, void* set, bool& satisfies){
         // in this order so that the first one the entity does not have aborts the rest of them
-        satisfies = satisfies && set->template GetSet<T>()->HasComponent(id);
+        satisfies = satisfies && static_cast<SparseSet<T>*>(set)->HasComponent(id);
     }
     
     template<typename T>
-    inline T& FilterComponentGet(entity_t idx, SparseSetErased* ptr){
-        return ptr->template GetSet<T>()->Get(idx);
+    inline T& FilterComponentGet(entity_t idx, void* ptr){
+        return static_cast<SparseSet<T>*>(ptr)->Get(idx);
     }
    
     template<typename T>
-    inline SparseSetErased* FilterGetSparseSet(){
-        return &(componentMap.at(RavEngine::CTTI<T>()));
+    inline void* FilterGetSparseSet(){
+        return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>();
     }
     
 public:
@@ -186,16 +186,18 @@ public:
         constexpr auto n_types = sizeof ... (A);
         static_assert(n_types > 0, "Must supply a type to query for");
         
-        auto mainFilter = GetRange<typename std::tuple_element<0, std::tuple<A...> >::type>();
+        using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
         
         if constexpr (n_types == 1){
+            auto mainFilter = GetRange<primary_t>();
             for(size_t i = 0; i < mainFilter->DenseSize(); i++){
                 auto& item = mainFilter->Get(i);
                 f(item);
             }
         }
         else{
-            std::array<SparseSetErased*, n_types> ptrs{ FilterGetSparseSet<A>()...};
+            std::array<void*, n_types> ptrs{ FilterGetSparseSet<A>()...};
+            auto mainFilter = static_cast<SparseSet<primary_t>*>(ptrs[0]);
             // does this entity have all of the other required components?
             for(size_t i = 0; i < mainFilter->DenseSize(); i++){
                 const auto owner = mainFilter->GetOwner(i);
